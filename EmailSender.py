@@ -1,11 +1,22 @@
+from LoggerConfig import *
 import smtplib
 from email.message import EmailMessage
-to_email = ['']
+import ConfigManager
 
+logger = logging.getLogger(__name__)
+SAMPLE_CONFIG = {
+    'sender_gmail_add' : 'example@gmail.com',
+    'sender_gmail_password' : 'pw',
+    'receiver_list' : ['example0@gmail.com', 'example1@gmail.com'],
+}
+config = ConfigManager.load_config(SAMPLE_CONFIG)
+gmail_user = config['sender_gmail_add']
+gmail_password = config['sender_gmail_password']
+to_email = config['receiver_list']
 
 def send_email(subject, body):
-    gmail_user = ""  # Your Gmail address
-    gmail_password = ""  # Your Gmail password or App Password
+    # gmail_user = "jasonlamufobot@gmail.com"  # Your Gmail address
+    # gmail_password = "zaap rkun mkhg slse"  # Your Gmail password or App Password
 
     for email in to_email:
         msg = EmailMessage()
@@ -20,11 +31,11 @@ def send_email(subject, body):
             server.login(gmail_user, gmail_password)
             server.send_message(msg)
             server.close()
-
-            print('Email sent!')
+            logger.info(f"Email sent to: {email}")
         except Exception as e:
-            print('Something went wrong...', e)
+            logger.exception(f"{e}")
 
 # Test
 if __name__ == "__main__":
-    send_email('Update Notification', 'This is the body of the email')
+    logger = setup_logging()  
+    send_email('Test Notification', 'This is the body of the email')

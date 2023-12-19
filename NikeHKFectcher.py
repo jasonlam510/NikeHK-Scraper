@@ -18,13 +18,6 @@ def validate_json(data) -> dict:
         raise ValueError(error_message)
     return data
 
-def validate_text(data) -> str:
-    if not isinstance(data, str):
-        error_message = f"Fetched data is not text:\n{data}"
-        logger.error(error_message)
-        raise ValueError(error_message)
-    return data
-
 async def fetch_data(url: str, headers: dict[str:str] = None) -> Union[dict, str]:
     while True:  # Infinite loop to keep trying
         try:
@@ -72,7 +65,7 @@ async def fetch_loadPdpSizeAndInvList(skuCode: str):
         'referer': product_url()
     }
     data = await fetch_data(jquery_url, headers)
-    return validate_text(data)
+    return data
 
 # Test
 if __name__ == '__main__':

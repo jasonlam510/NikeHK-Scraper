@@ -1,7 +1,9 @@
 from LoggerConfig import *
 import smtplib
 from email.message import EmailMessage
+from smtplib import SMTPAuthenticationError
 import ConfigManager
+import sys
 
 logger = logging.getLogger(__name__)
 SAMPLE_CONFIG = {
@@ -32,8 +34,11 @@ def send_email(subject, body):
             server.send_message(msg)
             server.close()
             logger.info(f"Email sent to: {email}")
+        except SMTPAuthenticationError as e:
+            logger.error(f"{e}")
+            sys.exit(1)
         except Exception as e:
-            logger.exception(f"{e}")
+            logger.warning(f"{e}")
 
 # Test
 if __name__ == "__main__":

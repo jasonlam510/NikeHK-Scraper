@@ -1,12 +1,13 @@
 from LoggerConfig import *
 import json
 import os
+import sys
 
 CONFIG_PATH = './config.json'
 
 logger = logging.getLogger(__name__)
 
-def load_config(config_example: dict)-> dict[str : any]:
+def load_config(config_example: dict = None)-> dict[str : any]:
     """Load and return the configuration file: create if not exists, add missing keys."""
 
     # Check if the file exists
@@ -20,10 +21,11 @@ def load_config(config_example: dict)-> dict[str : any]:
             config = dict(json.load(file))
 
         # Append missing keys with default values
-        for key, default_value in config_example.items():
-            if (key not in config.keys()):
-                logger.warning(f"{key} is not found in the {CONFIG_PATH}")
-            config.setdefault(key, default_value)
+        if (config_example is not None):
+            for key, default_value in config_example.items():
+                if (key not in config.keys()):
+                    logger.warning(f"{key} is not found in the {CONFIG_PATH}")
+                config.setdefault(key, default_value)
 
     # Save the updated configuration
     with open(CONFIG_PATH, 'w') as file:

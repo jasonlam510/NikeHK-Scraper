@@ -5,6 +5,8 @@ import pandas as pd
 import os
 import ConfigManager
 
+NIKE_URL = "https://www.nike.com.hk"
+
 logger = logging.getLogger(__name__)
 
 '''
@@ -22,7 +24,7 @@ SAMPLE_CONFIG = {
 }
 config = ConfigManager.load_config(SAMPLE_CONFIG)
 
-NIKE_URL = "https://www.nike.com.hk"
+
 
 class NikeHKShoe:
     def __init__(self , skucode: str, path: str): 
@@ -39,9 +41,9 @@ class NikeHKShoe:
         for datafile in config.keys():
             stored_data = self.retrieve_data_by_type(datafile)
             if(datafile in ['dynamic_info', 'static_info']):
-                fetch_Dataframe = NikeHKRetriever.retrieve_loadSameStyleData(self.skucode, datafile)
+                fetch_Dataframe = await NikeHKRetriever.retrieve_loadSameStyleData(self.skucode, datafile)
             elif(datafile in ['stock']):
-                fetch_Dataframe = NikeHKRetriever.retrieve_loadPdpSizeAndInvList(self.skucode)
+                fetch_Dataframe = await NikeHKRetriever.retrieve_loadPdpSizeAndInvList(self.skucode)
             else:
                 error_msg = "Not implemented data file type!"
                 logger.error(error_msg)
@@ -69,8 +71,8 @@ class NikeHKShoe:
         # Rertrieve the last row of the .csv
         return pd.read_csv('csv_path').iloc[-1].to_dict()
 
-    async def extract_loadSameStyleData(self) -> dict[str:str]:
-        data = NikeHKRetriever.retrieve_loadSameStyleData(self.skucode, ['skuMark', 'skuMark2', 'inventory', 'fob', 'listPrice', 'rank', 'inventory', 'firstOnlineTime', 'link'])
+    async def extract_loadSameStyleData(self, data_type: str = None) -> dict[str:str]:
+        data = await NikeHKRetriever.retrieve_loadSameStyleData(self.skucode, data_type)
         if (data['skuMark'] is not None):
             data['skuMark'] = json.loads(data['skuMark']).get('zh_HK', None) 
         if (data['skuMark2'] is not None):

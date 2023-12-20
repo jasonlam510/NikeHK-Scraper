@@ -1,3 +1,4 @@
+import json
 from LoggerConfig import *
 import bs4
 import NikeHKFectcher
@@ -50,12 +51,23 @@ async def retrieve_loadSameStyleData(skuCode: str, keys: list[str] = None) -> di
     if (full_data is None):
         raise ValueError("SkuCode is not found from the response")
     
+    # Extract readable text from skumakr and skuma2k2
+    full_data = extract_skumark(full_data)
+    
     # If no specific keys are provided, return the full data
     if keys is None:
         return full_data
 
     # Otherwise, extract only the keys of interest
     return {key: full_data.get(key) for key in keys}
+
+def extract_skumark(full_data: dict) -> dict:
+    if ('skuMark' in full_data and full_data['skuMark'] is not None):
+        full_data['skuMark'] = json.loads(full_data['skuMark']).get('zh_HK', None) 
+    if ('skuMark2' in full_data and full_data['skuMark2']is not None):
+        full_data['skuMark2'] = json.loads(full_data['skuMark']).get('zh_HK', None)
+    return full_data
+
 
 async def retrieve_loadPdpSizeAndInvList(skuCode: str) -> dict[str, list[str]]:
     data = await NikeHKFectcher.fetch_loadPdpSizeAndInvList(skuCode)

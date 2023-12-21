@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class CustomHandler(logging.Handler):
     def emit(self, record):
         if record.levelno >= logging.ERROR:
-            EmailSender.send_email(f"{record.levelname}", f"Time: {record.asctime}\nMessage: {record.message}\nFilename: {record.filename}\nModule: {record.module}")
+            EmailSender.boardcase_email(f"{record.levelname}", f"Time: {record.asctime}\nMessage: {record.message}\nFilename: {record.filename}\nModule: {record.module}")
         # Notifyer.notify()
             
 def setup_logging():

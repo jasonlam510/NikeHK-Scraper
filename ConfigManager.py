@@ -1,7 +1,6 @@
 from LoggerConfig import *
 import json
 import os
-import sys
 
 CONFIG_PATH = './config.json'
 

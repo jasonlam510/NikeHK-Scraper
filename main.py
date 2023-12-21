@@ -1,8 +1,8 @@
 import LoggerConfig
 import ConfigManager
-import NikeHKRetriever
-import NikeHKFectcher
-import NikeHKShoe
+import NikeHK.NikeHKRetriever as NikeHKRetriever
+import NikeHK.NikeHKFectcher as  NikeHKFectcher
+import NikeHK.NikeHKShoe as NikeHKShoe
 import asyncio
 
 async def main():

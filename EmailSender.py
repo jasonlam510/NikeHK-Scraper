@@ -7,16 +7,18 @@ import sys
 
 logger = logging.getLogger(__name__)
 SAMPLE_CONFIG = {
-    'sender_gmail_add' : 'example@gmail.com',
-    'sender_gmail_password' : 'pw',
+    'sender_gmail' : {
+        'gmail' : 'example@gmail.com',
+        'password' : 'pw'
+    },
     'receiver_list' : ['example0@gmail.com', 'example1@gmail.com'],
 }
 config = ConfigManager.load_config(SAMPLE_CONFIG)
-gmail_user = config['sender_gmail_add']
-gmail_password = config['sender_gmail_password']
+gmail_user = config['sender_gmail']['gmail']
+gmail_password = config['sender_gmail']['password']
 to_email = config['receiver_list']
 
-def send_email(subject, body):
+def boardcase_email(subject, body):
     # gmail_user = "jasonlamufobot@gmail.com"  # Your Gmail address
     # gmail_password = "zaap rkun mkhg slse"  # Your Gmail password or App Password
 
@@ -36,11 +38,11 @@ def send_email(subject, body):
             logger.info(f"Email sent to: {email}")
         except SMTPAuthenticationError as e:
             logger.error(f"{e}")
-            sys.exit(1)
+            raise e
         except Exception as e:
             logger.warning(f"{e}")
 
 # Test
 if __name__ == "__main__":
     logger = setup_logging()  
-    send_email('Test Notification', 'This is the body of the email')
+    boardcase_email('Test Notification', 'This is the body of the email')

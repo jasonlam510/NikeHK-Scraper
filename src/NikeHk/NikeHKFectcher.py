@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 def product_url() -> str:
     return NIKE_URL
 
+def product_img_url(skucode: str) -> str:
+    return f'https://static.nike.com.hk/resources/product/{skucode}/{skucode}_BL1.png'
+
 def validate_json(data) -> dict:
     if not isinstance(data, dict):
         error_message = f"Fetched data is not JSON:\n{data}"

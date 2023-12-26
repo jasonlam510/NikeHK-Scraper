@@ -7,7 +7,7 @@ import src.DelayManager as DelayManager
 import src.ConfigManager as ConfigManager
 import src.EmailSender as EmailSender
 from src.LoggerConfig import *
-from NikeHKFectcher import product_url
+from NikeHKFectcher import product_url, product_img_url
 
 logger = logging.getLogger(__name__)
 SAMPLE_CONFIG = {
@@ -72,8 +72,8 @@ class NikeHkwatcher:
         self.update_shoes()
 
     def notify_new_shoes(self, new_shoes: list[NikeHKShoe]):
-        for sku in new_shoes:
-            EmailSender.boardcase_email(f"New shoe: {sku}", product_url(sku.link))
+        for shoe in new_shoes:
+            EmailSender.send_email_with_image(f"New shoe: {shoe.skucode}", product_url()+shoe.link, product_img_url(shoe.skucode))
 
 async def main():
     logger = setup_logging()

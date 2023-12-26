@@ -1,6 +1,6 @@
 import src.LoggerConfig as LoggerConfig
 import src.ConfigManager  as ConfigManager
-# from src.NikeHK.NikeHKShoe import NikeHKShoe
+import src.NikeHk.NikeHkwatcher as NikeHkwatcher
 import asyncio
 
 async def main():

@@ -21,9 +21,6 @@ gmail_password = config['sender_gmail']['password']
 to_email = config['receiver_list']
 
 def boardcase_email(subject, body):
-    # gmail_user = "jasonlamufobot@gmail.com"  # Your Gmail address
-    # gmail_password = "zaap rkun mkhg slse"  # Your Gmail password or App Password
-
     for email in to_email:
         msg = EmailMessage()
         msg.set_content(body)
@@ -44,7 +41,47 @@ def boardcase_email(subject, body):
         except Exception as e:
             logger.warning(f"{e}")
 
+def broadcast_html_email(subject, html_body):
+    for email in to_email:
+        msg = EmailMessage()
+        msg.set_content(html_body, subtype='html')  # Set the HTML content
+        msg['Subject'] = subject
+        msg['From'] = gmail_user
+        msg['To'] = email
+
+        try:
+            server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+            server.ehlo()
+            server.login(gmail_user, gmail_password)
+            server.send_message(msg)
+            server.close()
+            logger.info(f"HTML email sent to: {email}")
+        except SMTPAuthenticationError as e:
+            logger.error(f"{e}")
+            raise e
+        except Exception as e:
+            logger.warning(f"{e}")
+
+def send_email_with_image(subject, text, img_url):
+    # Construct the HTML content
+    html_content = f"""
+    <html>
+        <body>
+            <p>{text}</p>
+            <img src="{img_url}" alt="Image">
+        </body>
+    </html>
+    """
+
+    # Call the function to send an HTML email
+    broadcast_html_email(subject, html_content)
+
+
 # Test
 if __name__ == "__main__":
     logger = setup_logging()  
-    boardcase_email('Test Notification', 'This is the body of the email')
+    # boardcase_email('Test Notification', 'This is the body of the email')
+
+    img_url = "https://static.nike.com.hk/resources/product/FQ8080-133/FQ8080-133_BL1.png"
+    send_email_with_image("Test Email with Image", "This is a test email with an image.", img_url)
+

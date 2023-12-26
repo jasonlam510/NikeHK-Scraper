@@ -3,11 +3,13 @@ sys.path.append(os.getcwd())
 import asyncio
 import src.DelayManager as DelayManager
 from src.LoggerConfig import *
+import src.EmailSender as EmailSender
 import NikeHKRetriever
 import pandas as pd
 import math
 import os
 import src.ConfigManager as ConfigManager
+from NikeHKFectcher import product_url, product_img_url
 
 NIKE_URL = "https://www.nike.com.hk"
 
@@ -28,13 +30,23 @@ SAMPLE_CONFIG = {
         'stock' : ['onStockSize', 'offStockSize']
     },
     'update_csv_timeout' : 5*60,
-    'update_csv_max_retry': 2
+    'update_csv_max_retry': 2,
+    'monitor_shoes' : [{'skucode':'FV0392-100',
+                        'monitoring_key' : ['onStockSize']
+                        }, 
+                        {'skucode':'FB8896-300',
+                        'monitoring_key' : ['onStockSize']
+                        },
+                        {'skucode':'FQ8080-133',
+                        'monitoring_key' : ['onStockSize']
+                        }
+                    ]
 }
 config = ConfigManager.load_config(SAMPLE_CONFIG)
 DATA_FILE = config['data_file']
 UPDATE_CSV_TIMEOUT = config['update_csv_timeout']
 UPDATE_CSV_MAX_RETRY = config['update_csv_max_retry']
-
+MONITOR_SHOES = config['monitor_shoes']
 
 class NikeHKShoe:
     def __init__(self , skucode: str, path: str): 
@@ -102,7 +114,19 @@ class NikeHKShoe:
             val2 = fetch_data.get(key, None)
             if val1 != val2:
                 logger.info(f"{self.skucode} | {key}: {val1} -> {val2}") # TODO use notify function instead?
+                if self.isMonitoring(self.skucode, key):
+                    EmailSender.send_email_with_image(f"{self.skucode} updated on {key}", f"{key}: {val1} -> {val2}\n{product_url()+self.link}", product_img_url(self.skucode))
     
+    @staticmethod
+    def isMonitoring(skucode: str, keys: str)-> bool:
+        notify = False
+        for shoe in MONITOR_SHOES:
+            if shoe['skucode'] == skucode:
+                for key in shoe['monitoring_key']:
+                    if key == keys:
+                        notify = True
+        return notify
+
     async def update_csv(self, path: str, df: pd.DataFrame, new_data: dict):
         fetch_df = pd.DataFrame([new_data])
         updated_df = pd.concat([df, fetch_df] , axis=0)
@@ -139,9 +163,22 @@ class NikeHKShoe:
 
 # Test
 async def main():
-    s = 'DD1391-100'
-    n = NikeHKShoe(s, '.\data')
-    await n.update()
+    # s = 'DD1391-100'
+    # n = NikeHKShoe(s, '.\data')
+    # await n.update()
+
+    # 'monitor_shoes' : [{'skucode':'FV0392-100',
+    #                     'monitoring_key' : ['onStockSize']
+    #                     }, 
+    #                     {'skucode':'FB8896-300',
+    #                     'monitoring_key' : ['onStockSize']
+    #                     },
+    #                     {'skucode':'FQ8080-133',
+    #                     'monitoring_key' : ['onStockSize']
+    #                     }
+    #                 ]
+    result = NikeHKShoe.isMonitoring('FB8896-300', 'onS=')
+    print(result)
 
 if __name__ == '__main__':
     asyncio.run(main())

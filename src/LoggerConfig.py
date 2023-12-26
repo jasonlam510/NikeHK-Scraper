@@ -1,6 +1,7 @@
+import sys,os
+sys.path.append(os.getcwd())
 import logging
-import os
-import EmailSender
+import src.EmailSender as EmailSender
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,9 @@ def setup_logging():
                         ])
 
     return logging.getLogger()
+
+def getLogger(name:str) -> logging.Logger:
+    return logging.getLogger(name)
 
 # Test
 if __name__ == '__main__':

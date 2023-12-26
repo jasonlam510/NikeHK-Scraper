@@ -1,8 +1,11 @@
+import sys,os
+sys.path.append(os.getcwd())
+from src import LoggerConfig
 import asyncio
 import logging
 import aiohttp
 from typing import Union
-from LoggerConfig import *
+
 
 NIKE_URL = "https://www.nike.com.hk"
 
@@ -69,4 +72,4 @@ async def fetch_loadPdpSizeAndInvList(skuCode: str):
 
 # Test
 if __name__ == '__main__':
-    logger = setup_logging()
+    logger = LoggerConfig.setup_logging()

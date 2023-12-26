@@ -1,11 +1,14 @@
+import asyncio
+import sys,os
+sys.path.append(os.getcwd())
 import json
-from LoggerConfig import *
+from src.LoggerConfig import *
 import bs4
 import NikeHKFectcher
 
 logger = logging.getLogger(__name__)
 
-async def retrieve_loadSameStyleData(skuCode: str, keys: list[str] = None) -> dict[str : str]:
+async def retrieve_loadSameStyleData(skuCode: str, *args: list) -> (dict, dict):
     """
         Retrieve data for a given SKU code and return a subset of the data based on keys.
 
@@ -52,20 +55,16 @@ async def retrieve_loadSameStyleData(skuCode: str, keys: list[str] = None) -> di
         raise ValueError("SkuCode is not found from the response")
     
     # Extract readable text from skumakr and skuma2k2
-    full_data = extract_skumark(full_data)
-    
-    # If no specific keys are provided, return the full data
-    if keys is None:
-        return full_data
+    full_data = process_skumark(full_data)
 
     # Otherwise, extract only the keys of interest
-    return {key: full_data.get(key) for key in keys}
+    return tuple({key: full_data.get(key) for key in key_list} for key_list in args)
 
-def extract_skumark(full_data: dict) -> dict:
+def process_skumark(full_data: dict) -> dict:
     if ('skuMark' in full_data and full_data['skuMark'] is not None):
         full_data['skuMark'] = json.loads(full_data['skuMark']).get('zh_HK', None) 
     if ('skuMark2' in full_data and full_data['skuMark2']is not None):
-        full_data['skuMark2'] = json.loads(full_data['skuMark']).get('zh_HK', None)
+        full_data['skuMark2'] = json.loads(full_data['skuMark2']).get('zh_HK', None)
     return full_data
 
 
@@ -82,12 +81,20 @@ async def retrieve_loadPdpSizeAndInvList(skuCode: str) -> dict[str, list[str]]:
             "offStockSize" : off_stock_size\
             }
     
-async def find_nikePlpSku(url: str) -> list[str]:
+async def extract_nikePlpSku(url: str) -> list[str]:
     content = await NikeHKFectcher.fetch_data(url)
     soup = bs4.BeautifulSoup(content, 'html.parser')
     skucodeList = soup.find('input', id='nikePlpSku').get('value')
     return skucodeList.split(',')
 
+async def main():
+    logger = setup_logging()
+    skucode = 'DD1391-100'
+    dynamic_info = ['skuMark', 'skuMark2', 'inventory', 'fob', 'listPrice', 'rank']
+    static_info = ['abTestCommand', 'activeTime', 'firstOnlineTime', 'link', 'skuRemark', 'rankCount', 'sku', 'skuId', 'name', 'nameLine1', 'nameLine2', 'nikeIdUrl', 'onShelvesTime', 'isAbTest', 'isNikeIdSku', 'color']
+    result = await retrieve_loadSameStyleData(skucode, dynamic_info, static_info)
+    print(result)
+
 # Test
 if __name__ == '__main__':
-    logger = setup_logging()
+    asyncio.run(main())

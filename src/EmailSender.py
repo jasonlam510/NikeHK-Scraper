@@ -1,9 +1,11 @@
-from LoggerConfig import *
+import sys,os
+sys.path.append(os.getcwd())
+from src.LoggerConfig import *
+import src.ConfigManager as ConfigManager
 import smtplib
 from email.message import EmailMessage
 from smtplib import SMTPAuthenticationError
-import ConfigManager
-import sys
+
 
 logger = logging.getLogger(__name__)
 SAMPLE_CONFIG = {

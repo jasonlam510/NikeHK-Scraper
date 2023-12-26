@@ -1,11 +1,13 @@
+import sys,os
+sys.path.append(os.getcwd())
 import asyncio
-import DelayManager
+import src.DelayManager as DelayManager
+from src.LoggerConfig import *
 import NikeHKRetriever
-import logging
 import pandas as pd
 import math
 import os
-import ConfigManager
+import src.ConfigManager as ConfigManager
 
 NIKE_URL = "https://www.nike.com.hk"
 
@@ -29,10 +31,15 @@ SAMPLE_CONFIG = {
     'update_csv_max_retry': 2
 }
 config = ConfigManager.load_config(SAMPLE_CONFIG)
+DATA_FILE = config['data_file']
+UPDATE_CSV_TIMEOUT = config['update_csv_timeout']
+UPDATE_CSV_MAX_RETRY = config['update_csv_max_retry']
+
 
 class NikeHKShoe:
     def __init__(self , skucode: str, path: str): 
         self.skucode = skucode
+        self.link = None
         self.path = f'{path}/{skucode}' # path of the data folder
     
     @classmethod
@@ -44,24 +51,26 @@ class NikeHKShoe:
     def csv_path(self, datafile):
         return f'{self.path}/{datafile}.csv'
     
-    def retrieve_datafile_config(self, filename: str = None) -> list:
-        if filename == None:
-            return config['data_file']
-        return config['data_file'][filename]
-    
     async def update(self):
         # Update each data file
+        logger.info(f"Start updating: {self.skucode}")
+        dynamic_data, static_data = await NikeHKRetriever.retrieve_loadSameStyleData(self.skucode, DATA_FILE['dynamic_info'], DATA_FILE['static_info'])
         for file_name in SAMPLE_CONFIG['data_file'].keys():
             # Get the stored data and new data(fetch data)
             stored_df = self.retrieve_stored_Data(file_name)
-            if(file_name in ['dynamic_info', 'static_info']):
-                fetch_data = await NikeHKRetriever.retrieve_loadSameStyleData(self.skucode, self.retrieve_datafile_config(file_name))
+            if (file_name == 'dynamic_info'):
+                fetch_data = dynamic_data
+            elif (file_name == 'static_info'):
+                fetch_data = static_data
             elif(file_name in ['stock']):
                 fetch_data = await NikeHKRetriever.retrieve_loadPdpSizeAndInvList(self.skucode)
             else:
                 error_msg = "Not implemented data file type!"
                 logger.error(error_msg)
                 raise ValueError(error_msg)
+            
+            # Update the link of the shoe
+            self.link = self.extract_link(fetch_data)
             
             # If the fetch data is the first data
             if (stored_df.empty == True): # No data in csv
@@ -78,6 +87,7 @@ class NikeHKShoe:
                 self.notify_update(latest_data, fetch_data)
                 # Update the csv
                 await self.update_csv(self.csv_path(file_name), stored_df, fetch_data)
+        logger.info(f"Finished updating: {self.skucode}")
                 
     def clean_nan(self, dict: dict) -> dict:
         for k, v in dict.items():
@@ -97,36 +107,40 @@ class NikeHKShoe:
         fetch_df = pd.DataFrame([new_data])
         updated_df = pd.concat([df, fetch_df] , axis=0)
         retry = 0
-        while (retry < config['update_csv_max_retry']):
+        while (retry < UPDATE_CSV_MAX_RETRY):
             try:
                 updated_df.to_csv(path)
                 break
             except PermissionError as e:
                 logger.error(f"{e}: Please close the csv file! ({retry+1})")
-                await DelayManager.sleep(config['update_csv_timeout'])
+                await DelayManager.sleep()
                 retry += 1
+    
+    def extract_link(self, fetch_data: dict)->str:
+        if ('link' in fetch_data.keys()):
+            return fetch_data['link']
                        
-    def retrieve_stored_Data(self, datafile: str) -> pd.DataFrame:
+    def retrieve_stored_Data(self, file_name: str) -> pd.DataFrame:
         # Check wether the data_type is correct
-        if (datafile not in SAMPLE_CONFIG['data_file'].keys()):
+        if (file_name not in SAMPLE_CONFIG['data_file'].keys()):
             error_msg = "Incorrect data_type!"
             logger.error(error_msg)
             raise ValueError(error_msg)
         
         # Create the file if not excits.
         os.makedirs(f'{self.path}', exist_ok=True)
-        path = self.csv_path(datafile)
+        path = self.csv_path(file_name)
         if not os.path.exists(path):
             # Save the empty DataFrame to a new CSV file with the column specifed in the config
-            df = pd.DataFrame(columns=self.retrieve_datafile_config(datafile))
-            df.to_csv(path)
+            df = pd.DataFrame(columns=DATA_FILE[file_name])
+            df.to_csv(path, index=False)
             logger.warning(f"{path} is not exists. Created a new CSV file.")
         return pd.read_csv(path)
 
 # Test
 async def main():
     s = 'DD1391-100'
-    n = NikeHKShoe(s, '.')
+    n = NikeHKShoe(s, '.\data')
     await n.update()
 
 if __name__ == '__main__':

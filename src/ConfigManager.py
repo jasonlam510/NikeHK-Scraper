@@ -1,4 +1,6 @@
-from LoggerConfig import *
+import sys,os
+sys.path.append(os.getcwd())
+from src.LoggerConfig import *
 import json
 import os
 

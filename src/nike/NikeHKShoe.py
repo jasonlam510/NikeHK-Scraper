@@ -44,13 +44,15 @@ SAMPLE_CONFIG = {
                         {'skucode':'FQ8080-133',
                         'monitoring_key' : ['onStockSize']
                         }
-                    ]
+                    ],
+    'NikeHKShoe_log_performance' : False
 }
 config = ConfigManager.load_config(SAMPLE_CONFIG)
 DATA_FILE = config['data_file']
 UPDATE_CSV_TIMEOUT = config['update_csv_timeout']
 UPDATE_CSV_MAX_RETRY = config['update_csv_max_retry']
 MONITOR_SHOES = config['monitor_shoes']
+P = config['NikeHKShoe_log_performance']
 
 class NikeHKShoe:
     def __init__(self , skucode: str, path: str): 
@@ -134,7 +136,7 @@ class NikeHKShoe:
         #         # Update the csv
         #         await self.update_csv(self.csv_path(file_name), stored_df, fetch_data)
         end_time = time()
-        logger.info(f"{self.path} finished update in {round(end_time-start_time, 3)}s.")
+        if P: logger.info(f"{self.path} finished update in {round(end_time-start_time, 3)}s.")
     
     async def compare_dict(self, old, new, path):
         old = self.clean_old_data(old)
@@ -171,6 +173,7 @@ class NikeHKShoe:
             if val1 != val2:
                 # logger.info(f"{self.skucode} | {key}: {val1} -> {val2}")
                 if self.isMonitoring(self.skucode, key):
+                    if (val1 is None): return # Prevent sending email when initialization
                     await EmailSender.async_send_email_with_image(f"{self.skucode} updated on {key}", f"{key}<br>{val1} -><br>{val2}<br>{self.url}", product_img_url(self.skucode))
 
     @staticmethod

@@ -103,7 +103,7 @@ def boardcase_email(subject, body):
 async def main():
     img_url = "https://static.nike.com.hk/resources/product/FQ8080-133/FQ8080-133_BL1.png"
     # await boardcase_email('Test Notification', 'This is the body of the email')
-    await send_email_with_image("Test Email with Image", "This is a test email with an image.", img_url)
+    await async_send_email_with_image("Test Email with Image", "This is a test email with an image.", img_url)
 
 # Test
 if __name__ == "__main__":

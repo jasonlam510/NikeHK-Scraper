@@ -1,13 +1,14 @@
+import sys,os
+sys.path.append(os.getcwd())
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-import os
-from NikeHKShoe import NikeHKShoe
-import NikeHKRetriever
+import src.nike.NikeHKRetriever as NikeHKRetriever
+from src.nike.NikeHKShoe import NikeHKShoe
 import src.DelayManager as DelayManager
 import src.ConfigManager as ConfigManager
 import src.EmailSender as EmailSender
 from src.LoggerConfig import *
-from NikeHKFectcher import product_url, product_img_url
+from src.nike.NikeHKFectcher import product_url, product_img_url
 
 logger = logging.getLogger(__name__)
 SAMPLE_CONFIG = {
@@ -49,22 +50,23 @@ class NikeHkwatcher:
             for future in futures:
                 shoe = future.result()
                 if shoe:
-                    self.shoes[shoe.skucode] = shoe  # Assuming sku_code is an attribute of NikeHKShoe
+                    self.shoes[shoe.skucode] = shoe 
                     new_shoes.append(shoe)
 
         logger.info(f"Finished updating shoes list: {self.name}")
         return new_shoes
     
-    def update_shoes(self):
+    async def update_shoes(self):
+
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             for shoe in self.shoes.values():
                 executor.submit(self.update_shoe, shoe)
 
-    def update_shoe(self, shoe: NikeHKShoe):
+    async def update_shoe(self, shoe: NikeHKShoe):
         # Random delay before updating
-        DelayManager.random_sleep(0, MAX_DELAY)
+        # DelayManager.random_sleep(0, MAX_DELAY)
         logger.info(f"Start calling: {shoe.skucode} to update")
-        shoe.update()
+        await shoe.update()
     
     async def update(self):
         new_shoes = await self.update_shoes_list()

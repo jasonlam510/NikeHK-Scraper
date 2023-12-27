@@ -1,6 +1,6 @@
 import sys,os
 sys.path.append(os.getcwd())
-from src import LoggerConfig
+import src.LoggerConfig as LoggerConfig
 import asyncio
 import logging
 import aiohttp

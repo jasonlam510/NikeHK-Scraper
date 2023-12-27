@@ -12,3 +12,6 @@ async def async_sleep(sleep_time):
 
 def random_sleep(min, max):
     time.sleep(random.randint(min, max))
+
+def sleep(sleep_time):
+    time.sleep(sleep_time)

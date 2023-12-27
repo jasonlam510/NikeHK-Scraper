@@ -1,15 +1,16 @@
+import ast
 import sys,os
 sys.path.append(os.getcwd())
 import asyncio
 import src.DelayManager as DelayManager
 from src.LoggerConfig import *
 import src.EmailSender as EmailSender
-import NikeHKRetriever
+from src.nike.NikeHKRetriever import *
 import pandas as pd
 import math
 import os
 import src.ConfigManager as ConfigManager
-from NikeHKFectcher import product_url, product_img_url
+from src.nike.NikeHKFectcher import product_url, product_img_url
 
 NIKE_URL = "https://www.nike.com.hk"
 
@@ -66,7 +67,13 @@ class NikeHKShoe:
     async def update(self):
         # Update each data file
         logger.info(f"Start updating: {self.skucode}")
-        dynamic_data, static_data = await NikeHKRetriever.retrieve_loadSameStyleData(self.skucode, DATA_FILE['dynamic_info'], DATA_FILE['static_info'])
+        dynamic_data, static_data = await retrieve_loadSameStyleData(self.skucode, DATA_FILE['dynamic_info'], DATA_FILE['static_info'])
+
+        # Update the link of the shoe
+        new_link = self.extract_link(dynamic_data | static_data)
+        if new_link is not None:
+            self.link = new_link
+
         for file_name in SAMPLE_CONFIG['data_file'].keys():
             # Get the stored data and new data(fetch data)
             stored_df = self.retrieve_stored_Data(file_name)
@@ -75,15 +82,12 @@ class NikeHKShoe:
             elif (file_name == 'static_info'):
                 fetch_data = static_data
             elif(file_name in ['stock']):
-                fetch_data = await NikeHKRetriever.retrieve_loadPdpSizeAndInvList(self.skucode)
+                fetch_data = await retrieve_loadPdpSizeAndInvList(self.skucode)
             else:
                 error_msg = "Not implemented data file type!"
                 logger.error(error_msg)
                 raise ValueError(error_msg)
-            
-            # Update the link of the shoe
-            self.link = self.extract_link(fetch_data)
-            
+                    
             # If the fetch data is the first data
             if (stored_df.empty == True): # No data in csv
                 await self.update_csv(self.csv_path(file_name), stored_df, fetch_data)
@@ -91,7 +95,8 @@ class NikeHKShoe:
 
             # Convert the latest date as a dictionary
             latest_data = stored_df.tail(1).to_dict(orient='records')[0]
-            latest_data = self.clean_nan(latest_data)
+            latest_data = self.clean_latest_data(latest_data)
+            fetch_data = self.clean_null(fetch_data)
 
             # Comparison on latest data and fetch data
             if (latest_data != fetch_data):
@@ -100,22 +105,34 @@ class NikeHKShoe:
                 # Update the csv
                 await self.update_csv(self.csv_path(file_name), stored_df, fetch_data)
         logger.info(f"Finished updating: {self.skucode}")
-                
-    def clean_nan(self, dict: dict) -> dict:
-        for k, v in dict.items():
+     
+    @staticmethod           
+    def clean_latest_data(data: dict) -> dict:
+        for k, v in data.items():
             if (type(v) != str and math.isnan(v)): # short-circuot lopgic, to replace nan into None
-                dict[k] = None
-        return dict
+                data[k] = None
+            if k in ['onStockSize', 'offStockSize']: # clear list stored as str
+                data[k] = ast.literal_eval(v)
+        return data
     
+    @staticmethod
+    def clean_null(data: dict)-> dict:
+        for k, v in data.items():
+            if v == "":
+                data[k] = None
+        return data
+   
     def notify_update(self, latest_data: dict, fetch_data: dict):
         all_keys = set(latest_data.keys()).union(fetch_data.keys())
         for key in all_keys:
             val1 = latest_data.get(key, None)
             val2 = fetch_data.get(key, None)
             if val1 != val2:
+                if (val1 == '' or val2 == ''):
+                    pass
                 logger.info(f"{self.skucode} | {key}: {val1} -> {val2}") # TODO use notify function instead?
                 if self.isMonitoring(self.skucode, key):
-                    EmailSender.send_email_with_image(f"{self.skucode} updated on {key}", f"{key}: {val1} -> {val2}\n{product_url()+self.link}", product_img_url(self.skucode))
+                    EmailSender.send_email_with_image(f"{self.skucode} updated on {key}", f"{key}\n{val1} ->\n{val2}\n{product_url()+self.link}", product_img_url(self.skucode))
     
     @staticmethod
     def isMonitoring(skucode: str, keys: str)-> bool:
@@ -133,7 +150,7 @@ class NikeHKShoe:
         retry = 0
         while (retry < UPDATE_CSV_MAX_RETRY):
             try:
-                updated_df.to_csv(path)
+                updated_df.to_csv(path, index=False)
                 break
             except PermissionError as e:
                 logger.error(f"{e}: Please close the csv file! ({retry+1})")

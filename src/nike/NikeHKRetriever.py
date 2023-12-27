@@ -1,10 +1,10 @@
-import asyncio
 import sys,os
 sys.path.append(os.getcwd())
+import asyncio
 import json
 from src.LoggerConfig import *
 import bs4
-import NikeHKFectcher
+import src.nike.NikeHKFectcher as NikeHKFectcher
 
 logger = logging.getLogger(__name__)
 

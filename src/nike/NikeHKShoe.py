@@ -172,7 +172,7 @@ class NikeHKShoe:
 async def read_csv_as_df(csv_file_path)->pd.DataFrame:
     if not os.path.exists(csv_file_path):
         return None
-    async with aiofiles.open(csv_file_path, mode='r') as file:
+    async with aiofiles.open(csv_file_path, mode='r', encoding='utf-8') as file:
         content = await file.read()
     
         # Use Pandas to read the CSV content
@@ -181,12 +181,9 @@ async def read_csv_as_df(csv_file_path)->pd.DataFrame:
 async def read_last_row_as_dict(csv_file_path)-> dict:
     if not os.path.exists(csv_file_path):
         return {}
-    
-    async with aiofiles.open(csv_file_path, mode='r') as file:
-        content = await file.read()
-    
+
         # Use Pandas to read the CSV content
-    df = pd.read_csv(StringIO(content), sep=",")
+    df = await read_csv_as_df(csv_file_path)
     
     if df.empty:
         return {}  

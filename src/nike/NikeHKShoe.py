@@ -149,12 +149,11 @@ class NikeHKShoe:
         return notify
 
     async def update_csv(self, old: dict, new: dict, path: str):
-        old = pd.DataFrame([old])
         new = pd.DataFrame([new])
-        if (old.empty == True):
+        if (old == {}):
             updated_df = new
         else:
-            updated_df = pd.concat([old, new] , axis=0)
+            updated_df = pd.concat([await read_csv_as_df(path), new] , axis=0)
         retry = 0
         while (retry < UPDATE_CSV_MAX_RETRY):
             try:
@@ -170,6 +169,15 @@ class NikeHKShoe:
         if ('link' in fetch_data.keys()):
             return fetch_data['link']
 
+async def read_csv_as_df(csv_file_path)->pd.DataFrame:
+    if not os.path.exists(csv_file_path):
+        return None
+    async with aiofiles.open(csv_file_path, mode='r') as file:
+        content = await file.read()
+    
+        # Use Pandas to read the CSV content
+    return pd.read_csv(StringIO(content), sep=",")
+    
 async def read_last_row_as_dict(csv_file_path)-> dict:
     if not os.path.exists(csv_file_path):
         return {}

@@ -13,6 +13,7 @@ import src.ConfigManager as ConfigManager
 from src.nike.NikeHKFectcher import product_url, product_img_url
 import aiofiles
 from io import StringIO
+from time import time
 
 NIKE_URL = "https://www.nike.com.hk"
 logger = setup_logging()
@@ -54,8 +55,13 @@ MONITOR_SHOES = config['monitor_shoes']
 class NikeHKShoe:
     def __init__(self , skucode: str, path: str): 
         self.skucode = skucode
-        self.link = None
-        self.path = f'{path}/{skucode}' # path of the data folder
+        self.url = None
+        self.path = self.create_folder(path)
+
+    def create_folder(self, path):
+        path = f'{path}/{self.skucode}'
+        os.makedirs(path, exist_ok=True)
+        return path
     
     @classmethod
     async def create(cls, skucode, path):
@@ -63,25 +69,31 @@ class NikeHKShoe:
         await instance.update()
         return instance
     
-
     def csv_path(self, file_name):
         return f'{self.path}/{file_name}.csv'
     
     async def update(self):
         # Update each data file
-        logger.info(f"Start updating: {self.skucode}")
-        fd1, fd2, fd3, sd1, sd2, sd3 = await asyncio.gather(
+        start_time = time()
+        p1 = self.csv_path('dynamic_info')
+        p2 = self.csv_path('static_info')
+        p3 = self.csv_path('stock')
+        fd, fd3, sd1, sd2, sd3 = await asyncio.gather(
             retrieve_loadSameStyleData(self.skucode, DATA_FILE['dynamic_info'], DATA_FILE['static_info']),
             retrieve_loadPdpSizeAndInvList(self.skucode),
-            read_last_row_as_dict(self.csv_path('dynamic_info')),
-            read_last_row_as_dict(self.csv_path('static_info')),
-            read_last_row_as_dict(self.csv_path('stock'))
+            read_last_row_as_dict(p1),
+            read_last_row_as_dict(p2),
+            read_last_row_as_dict(p3)
         )
 
+        fd1 = fd[0]
+        fd2 = fd[1]
+        self.url = product_url() + self.extract_link(fd1 | fd2)
+
         await asyncio.gather(
-            self.compare_dict(fd1, sd1),
-            self.compare_dict(fd2, sd2),
-            self.compare_dict(fd3, sd3)
+            self.compare_dict(sd1, fd1, p1),
+            self.compare_dict(sd2, fd2, p2),
+            self.compare_dict(sd3, fd3, p3)
         )
 
         # dynamic_data, static_data = await retrieve_loadSameStyleData(self.skucode, DATA_FILE['dynamic_info'], DATA_FILE['static_info'])
@@ -121,16 +133,18 @@ class NikeHKShoe:
         #         self.notify_update(latest_data, fetch_data)
         #         # Update the csv
         #         await self.update_csv(self.csv_path(file_name), stored_df, fetch_data)
-        logger.info(f"Finished updating: {self.skucode}")
+        end_time = time()
+        logger.info(f"{self.path} finished update in {round(end_time-start_time, 3)}s.")
     
-    async def compare_dict(self, old, new, file_name):
+    async def compare_dict(self, old, new, path):
         old = self.clean_old_data(old)
         new = self.clean_new_data(new)
         if (old != new):
             await asyncio.gather(
                 self.diff_lookup(old, new),
-                self.update_csv(self.csv_path(file_name), old, new)
+                self.update_csv(old, new, path)
             )
+            logger.info(f"{path} updated.")
      
     @staticmethod           
     def clean_old_data(data: dict) -> dict:
@@ -139,6 +153,7 @@ class NikeHKShoe:
                 data[k] = None
             if k in ['onStockSize', 'offStockSize']: # clear list stored as str
                 data[k] = ast.literal_eval(v)
+            pass
         return data
     
     @staticmethod
@@ -154,10 +169,10 @@ class NikeHKShoe:
             val1 = old.get(key, None)
             val2 = new.get(key, None)
             if val1 != val2:
-                logger.info(f"{self.skucode} | {key}: {val1} -> {val2}") # TODO use notify function instead?
+                # logger.info(f"{self.skucode} | {key}: {val1} -> {val2}")
                 if self.isMonitoring(self.skucode, key):
-                    await EmailSender.async_send_email_with_image(f"{self.skucode} updated on {key}", f"{key}<br>{val1} -><br>{val2}<br>{product_url()+self.link}", product_img_url(self.skucode))
-    
+                    await EmailSender.async_send_email_with_image(f"{self.skucode} updated on {key}", f"{key}<br>{val1} -><br>{val2}<br>{self.url}", product_img_url(self.skucode))
+
     @staticmethod
     def isMonitoring(skucode: str, keys: str)-> bool:
         notify = False
@@ -168,9 +183,13 @@ class NikeHKShoe:
                         notify = True
         return notify
 
-    async def update_csv(self, path: str, df: pd.DataFrame, new_data: dict):
-        fetch_df = pd.DataFrame([new_data])
-        updated_df = pd.concat([df, fetch_df] , axis=0)
+    async def update_csv(self, old: dict, new: dict, path: str):
+        old = pd.DataFrame([old])
+        new = pd.DataFrame([new])
+        if (old.empty == True):
+            updated_df = new
+        else:
+            updated_df = pd.concat([old, new] , axis=0)
         retry = 0
         while (retry < UPDATE_CSV_MAX_RETRY):
             try:
@@ -181,28 +200,11 @@ class NikeHKShoe:
                 await DelayManager.sleep()
                 retry += 1
     
-    def extract_link(self, fetch_data: dict)->str:
+    @staticmethod
+    def extract_link(fetch_data: dict)->str:
         if ('link' in fetch_data.keys()):
             return fetch_data['link']
     
-    async def read_last_row_as_dict(self, file_name)-> pd.DataFrame:
-        csv_file_path = self.csv_path(file_name)
-        if not os.path.exists(csv_file_path):
-            return None
-        
-        async with aiofiles.open(csv_file_path, mode='r') as file:
-            content = await file.read()
-        
-         # Use Pandas to read the CSV content
-        df = pd.read_csv(pd.compat.StringIO(content))
-        
-        if df.empty:
-            return None  # or return {}, based on your requirement
-
-        # Convert the last row to a dictionary
-        last_row = df.iloc[-1].to_dict()
-        return last_row
-                           
     # async def retrieve_stored_Data(self, file_name: str) -> pd.DataFrame:
     #     # Check wether the data_type is correct
     #     if (file_name not in SAMPLE_CONFIG['data_file'].keys()):
@@ -222,7 +224,7 @@ class NikeHKShoe:
 
 async def read_last_row_as_dict(csv_file_path)-> dict:
     if not os.path.exists(csv_file_path):
-        return None
+        return {}
     
     async with aiofiles.open(csv_file_path, mode='r') as file:
         content = await file.read()
@@ -231,7 +233,7 @@ async def read_last_row_as_dict(csv_file_path)-> dict:
     df = pd.read_csv(StringIO(content), sep=",")
     
     if df.empty:
-        return None  # or return {}, based on your requirement
+        return {}  
 
     # Convert the last row to a dictionary
     last_row = df.iloc[-1].to_dict()
@@ -239,12 +241,11 @@ async def read_last_row_as_dict(csv_file_path)-> dict:
 
 # Test
 async def main():
-    a = await read_last_row_as_dict("./data/DD1391-100/dynamic_info.csv")
-    print(a)
-    # s = 'DD1391-100'
-    # n = await NikeHKShoe.create(s, '.\data')
-    # print(n)
-    # logger.info("Done")
+    # a = await read_last_row_as_dict("./data/DD1391-100/dynamic_info.csv")
+    # print(a)
+    s = 'DD1391-100'
+    n = await NikeHKShoe.create(s, './data')
+    print(n)
 
 
     # 'monitor_shoes' : [{'skucode':'FV0392-100',

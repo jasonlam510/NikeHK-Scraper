@@ -75,7 +75,7 @@ class NikeHkwatcher:
 
     def notify_new_shoes(self, new_shoes: list[NikeHKShoe]):
         for shoe in new_shoes:
-            EmailSender.send_email_with_image(f"New shoe: {shoe.skucode}", product_url()+shoe.link, product_img_url(shoe.skucode))
+            EmailSender.send_email_with_image(f"New shoe: {shoe.skucode}", product_url()+shoe.url, product_img_url(shoe.skucode))
 
 async def main():
     logger = setup_logging()

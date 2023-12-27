@@ -21,6 +21,7 @@ config = ConfigManager.load_config(SAMPLE_CONFIG)
 SCRAP_LIST = config['scrap_list' ]
 
 async def main():
+    logger = LoggerConfig.setup_logging()
     config = ConfigManager.load_config()
 
     watchers = [await NikeHkwatcher.create(ele['name'], ele['url']) for ele in SCRAP_LIST]

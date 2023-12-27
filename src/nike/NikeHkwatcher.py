@@ -13,7 +13,7 @@ from time import time
 
 logger = logging.getLogger(__name__)
 SAMPLE_CONFIG = {
-    'max_delay' : 0.5
+    'max_delay' : 1
 }
 config = ConfigManager.load_config(SAMPLE_CONFIG)
 MAX_DELAY = config['max_delay']
@@ -38,8 +38,8 @@ class NikeHkwatcher:
         path = f'./data/{name}'
         os.makedirs(path, exist_ok=True)
         return path
-
-    async def update_shoes_list(self) -> list:
+    
+    async def update_shoes_list(self, notify: bool = False) -> list:
         logger.info(f"Start updating shoes list: {self.name}")
         skucodes = await NikeHKRetriever.extract_nikePlpSku(self.url)
         new_shoes = []  # The new shoe objects
@@ -52,38 +52,18 @@ class NikeHkwatcher:
             if shoe:
                 self.shoes[shoe.skucode] = shoe
                 new_shoes.append(shoe)
-
-        # def create_shoe(code):
-        #     return asyncio.run(NikeHKShoe.create(code, self.path))
-
-        # with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        #     futures = [executor.submit(create_shoe, code) for code in skucodes if code not in self.shoes]
-        #     for future in futures:
-        #         shoe = future.result()
-        #         if shoe:
-        #             self.shoes[shoe.skucode] = shoe 
-        #             new_shoes.append(shoe)
-        return new_shoes
+        if notify: await self.notify_new_shoes(new_shoes)       
     
     async def update_shoes(self):
-        # with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        #     for shoe in self.shoes.values():
-        #         executor.submit(self.update_shoe, shoe)
+        start_time = time()
         tasks = [self.update_shoe(shoe) for shoe in self.shoes.values()]
         await asyncio.gather(*tasks)
+        end_time = time()
+        logger.info(f"{self.path} finished update in {round(end_time-start_time, 3)}s.")
 
     async def update_shoe(self, shoe: NikeHKShoe):
         DelayManager.random_sleep(0, MAX_DELAY)
-        await shoe.update()
-    
-    async def update(self):
-        start_time = time()
-        await self.update_shoes()
-        new_shoes = await self.update_shoes_list()
-        await self.notify_new_shoes(new_shoes)
-        
-        end_time = time()
-        logger.info(f"{self.path} finished update in {round(end_time-start_time, 3)}s.")
+        await shoe.update()                      
 
     async def notify_new_shoes(self, new_shoes: list[NikeHKShoe]):
         for shoe in new_shoes:

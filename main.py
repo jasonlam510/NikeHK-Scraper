@@ -15,7 +15,7 @@ SAMPLE_CONFIG = {
                      'url' : 'https://www.nike.com.hk/man/shoe/airforce1/list.htm'
                     }
                 ],
-    'update_delay' : 30,
+    'update_delay' : 20,
     'watcher_delay' : 15
 }
 config = ConfigManager.load_config(SAMPLE_CONFIG)
@@ -31,14 +31,16 @@ async def main():
     for ele in SCRAP_LIST:
         watcher = await NikeHkwatcher.create(ele['name'], ele['url'])
         watchers.append(watcher)
-        logger.info(f"Start watcher_delay: {WATCHER_DELAY}s")
-        DelayManager.sleep(WATCHER_DELAY)
+        if (ele != SCRAP_LIST[-1]): # No watcher delay after the last ele is created
+            logger.info(f"Start watcher_delay: {WATCHER_DELAY}s")
+            DelayManager.sleep(WATCHER_DELAY)
 
     while (True):
-        logger.info(f"Start update_delay: {UPDATE_DELAY}*60 s")
+        logger.info(f"Start update_delay: {UPDATE_DELAY}*60s")
         DelayManager.sleep(UPDATE_DELAY*60)
         for watcher in watchers:
-            await watcher.update()
+            await watcher.update_shoes()
+            await watcher.update_shoes_list(True)
             logger.info(f"Start watcher_delay: {WATCHER_DELAY}s")
             DelayManager.sleep(WATCHER_DELAY)
             

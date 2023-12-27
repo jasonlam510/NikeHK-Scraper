@@ -97,44 +97,6 @@ class NikeHKShoe:
             self.compare_dict(sd2, fd2, p2),
             self.compare_dict(sd3, fd3, p3)
         )
-
-        # dynamic_data, static_data = await retrieve_loadSameStyleData(self.skucode, DATA_FILE['dynamic_info'], DATA_FILE['static_info'])
-
-        # # Update the link of the shoe
-        # new_link = self.extract_link(dynamic_data | static_data)
-        # if new_link is not None:
-        #     self.link = new_link
-
-        # for file_name in SAMPLE_CONFIG['data_file'].keys():
-        #     # Get the stored data and new data(fetch data)
-        #     stored_df = self.retrieve_stored_Data(file_name)
-        #     if (file_name == 'dynamic_info'):
-        #         fetch_data = dynamic_data
-        #     elif (file_name == 'static_info'):
-        #         fetch_data = static_data
-        #     elif(file_name in ['stock']):
-        #         fetch_data = await retrieve_loadPdpSizeAndInvList(self.skucode)
-        #     else:
-        #         error_msg = "Not implemented data file type!"
-        #         logger.error(error_msg)
-        #         raise ValueError(error_msg)
-                    
-        #     # If the fetch data is the first data
-        #     if (stored_df.empty == True): # No data in csv
-        #         await self.update_csv(self.csv_path(file_name), stored_df, fetch_data)
-        #         continue
-
-        #     # Convert the latest date as a dictionary
-        #     latest_data = stored_df.tail(1).to_dict(orient='records')[0]
-        #     latest_data = self.clean_latest_data(latest_data)
-        #     fetch_data = self.clean_null(fetch_data)
-
-        #     # Comparison on latest data and fetch data
-        #     if (latest_data != fetch_data):
-        #         # notify the update
-        #         self.notify_update(latest_data, fetch_data)
-        #         # Update the csv
-        #         await self.update_csv(self.csv_path(file_name), stored_df, fetch_data)
         end_time = time()
         if P: logger.info(f"{self.path} finished update in {round(end_time-start_time, 3)}s.")
     
@@ -207,23 +169,6 @@ class NikeHKShoe:
     def extract_link(fetch_data: dict)->str:
         if ('link' in fetch_data.keys()):
             return fetch_data['link']
-    
-    # async def retrieve_stored_Data(self, file_name: str) -> pd.DataFrame:
-    #     # Check wether the data_type is correct
-    #     if (file_name not in SAMPLE_CONFIG['data_file'].keys()):
-    #         error_msg = "Incorrect data_type!"
-    #         logger.error(error_msg)
-    #         raise ValueError(error_msg)
-        
-    #     # Create the file if not excits.
-    #     os.makedirs(f'{self.path}', exist_ok=True)
-    #     path = self.csv_path(file_name)
-    #     if not os.path.exists(path):
-    #         # Save the empty DataFrame to a new CSV file with the column specifed in the config
-    #         df = pd.DataFrame(columns=DATA_FILE[file_name])
-    #         df.to_csv(path, index=False)
-    #         logger.warning(f"{path} is not exists. Created a new CSV file.")
-    #     return pd.read_csv(path)
 
 async def read_last_row_as_dict(csv_file_path)-> dict:
     if not os.path.exists(csv_file_path):

@@ -16,7 +16,6 @@ from io import StringIO
 from time import time
 
 NIKE_URL = "https://www.nike.com.hk"
-logger = setup_logging()
 logger = logging.getLogger(__name__)
 
 '''
@@ -87,6 +86,8 @@ class NikeHKShoe:
             read_last_row_as_dict(p2),
             read_last_row_as_dict(p3)
         )
+        end_time = time()
+        if P: logger.info(f"{self.path} finished fecthing data in {round(end_time-start_time, 3)}s.")
 
         fd1 = fd[0]
         fd2 = fd[1]
@@ -125,7 +126,7 @@ class NikeHKShoe:
         for k, v in data.items():
             if v == "":
                 data[k] = None
-        return data
+        return data 
    
     async def diff_lookup(self, old: dict, new: dict):
         all_keys = set(old.keys()).union(new.keys())
@@ -136,7 +137,7 @@ class NikeHKShoe:
                 # logger.info(f"{self.skucode} | {key}: {val1} -> {val2}")
                 if self.isMonitoring(self.skucode, key):
                     if (val1 is None): return # Prevent sending email when initialization
-                    await EmailSender.async_send_email_with_image(f"{self.skucode} updated on {key}", f"{key}<br>{val1} -><br>{val2}<br>{self.url}", product_img_url(self.skucode))
+                    await EmailSender.async_send_email_with_image(f"{self.skucode} updated on {key}", f"{key}<br>{val1}<br>-><br>{val2}<br>{self.url}", product_img_url(self.skucode))
 
     @staticmethod
     def isMonitoring(skucode: str, keys: str)-> bool:
@@ -196,6 +197,7 @@ async def read_last_row_as_dict(csv_file_path)-> dict:
 async def main():
     # a = await read_last_row_as_dict("./data/DD1391-100/dynamic_info.csv")
     # print(a)
+    logger = setup_logging()
     s = 'DD1391-100'
     n = await NikeHKShoe.create(s, './data')
     print(n)

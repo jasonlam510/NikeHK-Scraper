@@ -9,8 +9,15 @@ logger = logging.getLogger(__name__)
 class CustomHandler(logging.Handler):
     def emit(self, record):
         if record.levelno >= logging.ERROR:
-            EmailSender.boardcase_email(f"{record.levelname}", f"Time: {record.asctime}\nMessage: {record.message}\nFilename: {record.filename}\nModule: {record.module}")
-        # Notifyer.notify()
+            EmailSender.boardcase_email(f"{record.levelname}",
+                                        f"""Time: {record.asctime}\n
+                                        Message: {record.message}\n
+                                        Filename: {record.filena}\n
+                                        Function: {record.funcName}\n 
+                                        Line: {record.lineno}\n
+                                        ThreadName: {record.threadName}\n
+                                        Stack_info: {record.stack_info}\n              
+""")
             
 def setup_logging():
     # Create logs directory if it doesn't exist

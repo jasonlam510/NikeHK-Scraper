@@ -1,7 +1,6 @@
 import sys,os
 sys.path.append(os.getcwd())
 import src.LoggerConfig as LoggerConfig
-logger = LoggerConfig.setup_logging()
 import src.ConfigManager  as ConfigManager
 from src.nike.NikeHkwatcher import NikeHkwatcher
 import src.DelayManager as DelayManager

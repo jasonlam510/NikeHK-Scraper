@@ -33,9 +33,14 @@ async def fetch_data(url: str, headers: dict[str:str] = None) -> Union[dict, str
                         # Log incorrect response code
                         logger.warning(f"Incorrect response code: {response.status}")
                         continue  # Try again
+                    
                     response_type = response.content_type
                     if response_type == 'application/json':
-                        return await response.json()
+                        json_response = await response.json()
+                        if json_response is not None:
+                            return json_response
+                        else:
+                            raise ValueError(f"response.json() is None:\n{await response.read()}")
                     elif response_type == 'text/html':
                         return await response.text()
                     else:

@@ -52,7 +52,7 @@ async def retrieve_loadSameStyleData(skuCode: str, *args: list) -> (dict, dict):
             full_data = element # The skuCode is found
     
     if (full_data is None):
-        raise ValueError("SkuCode is not found from the response")
+        raise ValueError(f"{skuCode} not found!")
     
     # Extract readable text from skumakr and skuma2k2
     full_data = process_skumark(full_data)

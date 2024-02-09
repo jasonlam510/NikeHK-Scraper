@@ -47,18 +47,23 @@ async def retrieve_loadSameStyleData(skuCode: str, *args: list) -> (dict, dict):
     full_data = None
     data = await NikeHKFectcher.fetch_loadSameStyleData(skuCode)
 
-    for element in data['colors']:
-        if element["code"] == skuCode:
-            full_data = element # The skuCode is found
-    
-    if (full_data is None):
-        raise ValueError(f"{skuCode} not found!")
-    
-    # Extract readable text from skumakr and skuma2k2
-    full_data = process_skumark(full_data)
+    try:
+        for element in data['colors']:
+            if element["code"] == skuCode:
+                full_data = element # The skuCode is found
+        
+        if (full_data is None):
+            raise ValueError(f"{skuCode} not found in the data:\n{data}")
+        
+        # Extract readable text from skumakr and skuma2k2
+        full_data = process_skumark(full_data)
 
-    # Otherwise, extract only the keys of interest
-    return tuple({key: full_data.get(key) for key in key_list} for key_list in args)
+        # Otherwise, extract only the keys of interest
+        return tuple({key: full_data.get(key) for key in key_list} for key_list in args)
+    
+    except ValueError as e:
+        logger.exception(f"{e}")
+        raise e
 
 def process_skumark(full_data: dict) -> dict:
     if ('skuMark' in full_data and full_data['skuMark'] is not None):
@@ -67,25 +72,33 @@ def process_skumark(full_data: dict) -> dict:
         full_data['skuMark2'] = json.loads(full_data['skuMark2']).get('zh_HK', None)
     return full_data
 
-
 async def retrieve_loadPdpSizeAndInvList(skuCode: str) -> dict[str, list[str]]:
     data = await NikeHKFectcher.fetch_loadPdpSizeAndInvList(skuCode)
-    on_stock_size = []
-    off_stock_size = []
-    for size in data['sizeList']:
-        if size["subscribe"] == "t":
-            on_stock_size.append(size["size"])
-        elif size['subscribe'] == "f":
-            off_stock_size.append(size["size"])
-    return {"onStockSize" : on_stock_size,\
-            "offStockSize" : off_stock_size\
-            }
+
+    try: 
+        on_stock_size = []
+        off_stock_size = []
+        for size in data['sizeList']:
+            if size["subscribe"] == "t":
+                on_stock_size.append(size["size"])
+            elif size['subscribe'] == "f":
+                off_stock_size.append(size["size"])
+        return {"onStockSize" : on_stock_size,\
+                "offStockSize" : off_stock_size\
+                }
+    except Exception as e:
+        logger.exception(f"{e}")
+        raise e
     
 async def extract_nikePlpSku(url: str) -> list[str]:
-    content = await NikeHKFectcher.fetch_data(url)
-    soup = bs4.BeautifulSoup(content, 'html.parser')
-    skucodeList = soup.find('input', id='nikePlpSku').get('value')
-    return skucodeList.split(',')
+    try:
+        content = await NikeHKFectcher.fetch_data(url)
+        soup = bs4.BeautifulSoup(content, 'html.parser')
+        skucodeList = soup.find('input', id='nikePlpSku').get('value')
+        return skucodeList.split(',')
+    except Exception as e:
+        logger.exception(f"{e}")
+        raise e
 
 async def main():
     logger = setup_logging()

@@ -13,10 +13,13 @@ from time import time
 
 logger = logging.getLogger(__name__)
 SAMPLE_CONFIG = {
-    'max_delay' : 1
+    'max_delay' : 0,
+    'NikeHKwatcher_log_performance' : False
 }
 config = ConfigManager.load_config(SAMPLE_CONFIG)
 MAX_DELAY = config['max_delay']
+P = config['NikeHKwatcher_log_performance']
+
 
 class NikeHkwatcher:
     def __init__(self, name, url):
@@ -31,7 +34,7 @@ class NikeHkwatcher:
         start_time = time()
         await instance.update_shoes_list()
         end_time = time()
-        logger.info(f"{instance.path} finished initizion in {round(end_time-start_time, 3)}s.")
+        if P: logger.info(f"{instance.path} finished initizion in {round(end_time-start_time, 3)}s.")
         return instance
 
     def create_folder(self, name):
@@ -40,7 +43,7 @@ class NikeHkwatcher:
         return path
     
     async def update_shoes_list(self, notify: bool = False) -> list:
-        logger.info(f"Start updating shoes list: {self.name}")
+        if P: logger.info(f"Start updating shoes list: {self.name}")
         skucodes = await NikeHKRetriever.extract_nikePlpSku(self.url)
         new_shoes = []  # The new shoe objects
 
@@ -59,7 +62,7 @@ class NikeHkwatcher:
         tasks = [self.update_shoe(shoe) for shoe in self.shoes.values()]
         await asyncio.gather(*tasks)
         end_time = time()
-        logger.info(f"{self.path} finished update in {round(end_time-start_time, 3)}s.")
+        if P: logger.info(f"{self.path} finished update in {round(end_time-start_time, 3)}s.")
 
     async def update_shoe(self, shoe: NikeHKShoe):
         DelayManager.random_sleep(0, MAX_DELAY)

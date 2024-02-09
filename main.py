@@ -31,16 +31,16 @@ async def main():
         watcher = await NikeHkwatcher.create(ele['name'], ele['url'])
         watchers.append(watcher)
         if (ele != SCRAP_LIST[-1]): # No watcher delay after the last ele is created
-            logger.info(f"Start watcher_delay: {WATCHER_DELAY}s")
+            print(f"Start watcher_delay: {WATCHER_DELAY}s")
             DelayManager.sleep(WATCHER_DELAY)
 
     while (True):
-        logger.info(f"Start update_delay: {UPDATE_DELAY}*60s")
+        print(f"Start update_delay: {UPDATE_DELAY}*60s")
         DelayManager.sleep(UPDATE_DELAY*60)
         for watcher in watchers:
             await watcher.update_shoes()
             await watcher.update_shoes_list(True)
-            logger.info(f"Start watcher_delay: {WATCHER_DELAY}s")
+            print(f"Start watcher_delay: {WATCHER_DELAY}s")
             DelayManager.sleep(WATCHER_DELAY)
             
 if __name__ == '__main__':

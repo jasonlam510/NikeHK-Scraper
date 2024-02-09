@@ -10,13 +10,13 @@ class CustomHandler(logging.Handler):
     def emit(self, record):
         if record.levelno >= logging.ERROR:
             EmailSender.boardcase_email(f"{record.levelname}",
-                                        f"""Time: {record.asctime}\n
-                                        Message: {record.message}\n
-                                        Filename: {record.filena}\n
-                                        Function: {record.funcName}\n 
-                                        Line: {record.lineno}\n
-                                        ThreadName: {record.threadName}\n
-                                        Stack_info: {record.stack_info}\n              
+                                        f"""Time: {record.asctime}
+                                        Message: {record.message}
+                                        Filename: {record.filename}
+                                        Function: {record.funcName}
+                                        Line: {record.lineno}
+                                        ThreadName: {record.threadName}
+                                        Stack_info: {record.stack_info}            
 """)
             
 def setup_logging():
@@ -33,7 +33,7 @@ def setup_logging():
 
     # Basic logging configuration
     logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        format="[%(asctime)s %(filename)s->%(funcName)s():%(lineno)s] [%(levelname)s] %(message)s",
                         datefmt=date_format,
                         handlers=[
                             logging.FileHandler(log_filepath),

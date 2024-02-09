@@ -1,4 +1,5 @@
 import sys,os
+import src.ConfigManager as ConfigManager
 sys.path.append(os.getcwd())
 import src.LoggerConfig as LoggerConfig
 import asyncio
@@ -6,10 +7,17 @@ import logging
 import aiohttp
 from typing import Union
 
-
-NIKE_URL = "https://www.nike.com.hk"
-
 logger = logging.getLogger(__name__)
+
+SAMPLE_CONFIG = {
+    'max_fetch_data_retry' : 5,
+    'fetch_data_retry_delay' : 5,
+    'nike_url' : 'https://www.nike.com.hk'
+}
+config = ConfigManager.load_config(SAMPLE_CONFIG)
+MAX_FETCH_DATA_RETRY = config['max_delay']
+FETCH_DATA_RETRY_DELAY = config['fetch_data_retry_delay']   
+NIKE_URL = config['nike_url']
 
 def product_url() -> str:
     return NIKE_URL
@@ -17,47 +25,46 @@ def product_url() -> str:
 def product_img_url(skucode: str) -> str:
     return f'https://static.nike.com.hk/resources/product/{skucode}/{skucode}_BL1.png'
 
-def validate_json(data) -> dict:
+def validate_json(data, error_message) -> dict:
     if not isinstance(data, dict):
-        error_message = f"Fetched data is not JSON:\n{data}"
-        logger.error(error_message)
-        raise ValueError(error_message)
+        raise TypeError(f"Fetched data from {error_message} is {type(data)} not JSON:\n{data}")
+    if (data is None):
+        raise ValueError(f"No data fetched from {error_message}")
     return data
 
+# Retry only when the response code is not 200, client error and timeout error.
 async def fetch_data(url: str, headers: dict[str:str] = None) -> Union[dict, str]:
-    while True:  # Infinite loop to keep trying
+    retry = 0
+    while retry < MAX_FETCH_DATA_RETRY:  
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
                     if response.status != 200:
                         # Log incorrect response code
-                        logger.warning(f"Incorrect response code: {response.status}")
+                        logger.warning(f"[{retry+1}]Incorrect response code while fetching {url}\n{response.status} ")
                         continue  # Try again
-                    
+
                     response_type = response.content_type
                     if response_type == 'application/json':
-                        json_response = await response.json()
-                        if json_response is not None:
-                            return json_response
-                        else:
-                            raise ValueError(f"response.json() is None:\n{await response.read()}")
+                        return await response.json()
                     elif response_type == 'text/html':
                         return await response.text()
                     else:
                         # Handle other content types or raise an exception
-                        logger.warning(f"Unhandled response content type: {response_type}\n{response.read()}")       
+                        raise TypeError(f"[{retry+1}]Unhandled response content type({response_type}) while fetching {url}:\n{response.read()}")       
         except aiohttp.ClientError as e:
             # Log client errors (like no network connection)
-            logger.error(f"Client error: {e}")
+            logger.warning(f"[{retry+1}]Client error while fetching {url}: {e}")
         except asyncio.TimeoutError:
             # Log timeout errors
-            logger.error("Request timed out")
+            logger.warning(f"[{retry+1}]Request timed out while fetching {url}")
         except Exception as e:
             # Log other potential exceptions
             logger.exception(f"{e}")
-            break  # Break the loop if an unrecoverable error occurs
+            raise e
 
-        await asyncio.sleep(1)  # Wait a bit before trying again
+        retry += 1
+        await asyncio.sleep(FETCH_DATA_RETRY_DELAY)  # Wait a bit before trying again
 
 async def fetch_loadSameStyleData(skuCode: str) -> Union[dict, str]:
     jquery_url=f"https://www.nike.com.hk/product/loadSameStyleData.json?skuCode={skuCode}"
@@ -67,7 +74,11 @@ async def fetch_loadSameStyleData(skuCode: str) -> Union[dict, str]:
     }
 
     data = await fetch_data(jquery_url, headers)
-    return validate_json(data)
+    try:
+        return validate_json(data, skuCode)
+    except Exception as e:
+        logger.exception(f"{e}")
+        raise e
     
 async def fetch_loadPdpSizeAndInvList(skuCode: str):
     jquery_url=f"https://www.nike.com.hk/product/loadPdpSizeAndInvList.json?skuCode={skuCode}"
@@ -76,7 +87,11 @@ async def fetch_loadPdpSizeAndInvList(skuCode: str):
         'referer': product_url()
     }
     data = await fetch_data(jquery_url, headers)
-    return data
+    try:
+        return validate_json(data, skuCode)
+    except Exception as e:
+        logger.exception(f"{e}")
+        raise e
 
 # Test
 if __name__ == '__main__':

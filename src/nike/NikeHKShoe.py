@@ -13,7 +13,7 @@ import src.ConfigManager as ConfigManager
 from src.nike.NikeHKFectcher import product_url, product_img_url
 import aiofiles
 from io import StringIO
-from time import time
+from time import time, sleep
 
 NIKE_URL = "https://www.nike.com.hk"
 logger = logging.getLogger(__name__)
@@ -73,21 +73,48 @@ class NikeHKShoe:
     def csv_path(self, file_name):
         return f'{self.path}/{file_name}.csv'
     
+    async def timed_task(self, task, task_name):
+        start_time = time()
+        if P: logger.info(f"{self.path} start task {task_name} at {round(start_time, 3)}s.")
+        result = await task
+        end_time = time()
+        if P: logger.info(f"{self.path} finished task {task_name} in {round(end_time-start_time, 3)}s.")
+        return result
+
     async def update(self):
         # Update each data file
         start_time = time()
         p1 = self.csv_path('dynamic_info')
         p2 = self.csv_path('static_info')
         p3 = self.csv_path('stock')
-        fd, fd3, sd1, sd2, sd3 = await asyncio.gather(
-            retrieve_loadSameStyleData(self.skucode, DATA_FILE['dynamic_info'], DATA_FILE['static_info']),
-            retrieve_loadPdpSizeAndInvList(self.skucode),
-            read_last_row_as_dict(p1),
-            read_last_row_as_dict(p2),
-            read_last_row_as_dict(p3)
-        )
-        end_time = time()
-        if P: logger.info(f"{self.path} finished fecthing data in {round(end_time-start_time, 3)}s.")
+
+        # fd, fd3, sd1, sd2, sd3 = await asyncio.gather(
+        #     retrieve_loadSameStyleData(self.skucode, DATA_FILE['dynamic_info'], DATA_FILE['static_info']),
+        #     retrieve_loadPdpSizeAndInvList(self.skucode),
+        #     read_last_row_as_dict(p1),
+        #     read_last_row_as_dict(p2),
+        #     read_last_row_as_dict(p3)
+        # )
+
+        try:
+            # Wrap each task with the timed_task function
+            if P: logger.info(f"{self.path} started to fecthing data")
+            tasks = [
+                self.timed_task(retrieve_loadSameStyleData(self.skucode, DATA_FILE['dynamic_info'], DATA_FILE['static_info']), "loadSameStyleData"),
+                self.timed_task(retrieve_loadPdpSizeAndInvList(self.skucode), "loadPdpSizeAndInvList"),
+                self.timed_task(read_last_row_as_dict(p1), "load dynamic_info"),
+                self.timed_task(read_last_row_as_dict(p2), "load static_info"),
+                self.timed_task(read_last_row_as_dict(p3), "load stock")
+            ]
+
+            # Await all tasks
+            fd, fd3, sd1, sd2, sd3 = await asyncio.gather(*tasks)
+
+            end_time = time()
+            if P: logger.info(f"{self.path} finished fecthing data in {round(end_time-start_time, 3)}s.")
+
+        except Exception as e:
+            return # Terminate the function if any error occurs
 
         fd1 = fd[0]
         fd2 = fd[1]
@@ -200,7 +227,9 @@ async def main():
     logger = setup_logging()
     s = 'DD1391-100'
     n = await NikeHKShoe.create(s, './data')
-    print(n)
+    while(True):
+        sleep(5)
+        await n.update()
 
 
     # 'monitor_shoes' : [{'skucode':'FV0392-100',

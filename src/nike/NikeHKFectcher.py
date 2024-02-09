@@ -15,7 +15,7 @@ SAMPLE_CONFIG = {
     'nike_url' : 'https://www.nike.com.hk'
 }
 config = ConfigManager.load_config(SAMPLE_CONFIG)
-MAX_FETCH_DATA_RETRY = config['max_delay']
+MAX_FETCH_DATA_RETRY = config['max_fetch_data_retry']
 FETCH_DATA_RETRY_DELAY = config['fetch_data_retry_delay']   
 NIKE_URL = config['nike_url']
 

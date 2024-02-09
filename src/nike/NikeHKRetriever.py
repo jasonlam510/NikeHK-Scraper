@@ -97,7 +97,7 @@ async def extract_nikePlpSku(url: str) -> list[str]:
         skucodeList = soup.find('input', id='nikePlpSku').get('value')
         return skucodeList.split(',')
     except Exception as e:
-        logger.exception(f"{e}")
+        logger.exception(f"Error occured while extracting from {url}\n{e}")
         raise e
 
 async def main():
